@@ -2,96 +2,83 @@
 
 Atomic flash arbitrage between Uniswap v4 and 1inch Aqua, built at ETHGlobal Mumbai 2026.
 
-flasharb borrows through Uniswap v4 flash accounting, buys back from a 1inch Aqua strategy priced by SwapVM, and keeps the spread, all inside one `PoolManager.unlock`. There is no flash-loan fee and no starting capital, and a bad arb costs only gas.
+flasharb borrows through Uniswap v4 flash accounting, so there is no flash-loan fee. It trades against an Aqua strategy priced by 1inch SwapVM and keeps the spread, all inside one `PoolManager.unlock`.
 
-## How it works
+**Status: walking skeleton.** The Solidity reference executor runs Flow A end to end against the official Uniswap v4 PoolManager, Aqua and SwapVM router. The Huff executor, the `ArbTax` Aqua position and the searcher bot come next. The full plan is the [build plan](https://claude.ai/artifact/GBN6BgXjyJqCQ64srJBFgC).
 
-1. **Borrow by swapping first.** Sell WETH on the v4 pool, exact-in. The PoolManager only records deltas; no tokens move.
-2. **Buy back on Aqua.** Call `sync(WETH)`, then swap the USDC on the SwapVM router with its output pointed at the PoolManager. Aqua pulls WETH from the maker's wallet straight in.
-3. **Pay the maker in the callback.** In `preTransferInCallback`, `take` the USDC and `push` it to the maker through Aqua.
-4. **Settle and keep the spread.** `settle()` credits the WETH. Profit stays as an ERC-6909 claim or goes to the owner.
+## How one arb works (Flow A)
 
-The PoolManager reverts everything unless every delta nets to zero. One arb moves exactly three ERC20 transfers.
+1. Sell `amountIn` WETH on the v4 pool, exact-in. The PoolManager only records deltas; no tokens move.
+2. `sync(WETH)`, then swap all of the USDC output on the SwapVM router. Its `to` slice points at the PoolManager, so Aqua pulls WETH from the maker's wallet straight into it.
+3. SwapVM calls `preTransferInCallback`: the executor `take`s the USDC it is owed and `push`es it to the maker through Aqua.
+4. `settle()` credits the WETH that arrived. The executor keeps WETH back minus WETH sold, as an ERC-6909 claim or a transfer.
 
-## Design choices
-
-- **Flash source:** Uniswap v4 flash accounting instead of a flash-loan contract, so there is no fee.
-- **Counter-venue:** Aqua strategies through the deployed SwapVM router v1.0.x, which pays out first and calls back for payment.
-- **Chain:** Unichain, Uniswap's L2, where Aqua and the router are deployed. Base is the fallback; demos run on a fork.
-- **Code:** a Huff executor (Huff Neo `hnc`) and a Solidity + Solady twin. The twin is compiled with both solc and Paradigm's Solar 0.3.0, so every gas claim is a measured diff.
-- **Aqua position:** an `ArbTax` Extruction charges a fee scaled by the priority fee (Paradigm's MEV tax), so LPs keep most of each arb.
-
-## Gas techniques
-
-Already in the Solidity reference executor:
-
-- No flash-loan call: the v4 leg only creates deltas.
-- Aqua pays straight into the PoolManager, skipping a hop through the executor.
-- The maker is paid inside the callback, not through SwapVM's transferFrom-and-push mode.
-- No storage: addresses are immutables in bytecode, and the 22-byte SwapVM taker header is a constant.
-- No `balanceOf` calls; Aqua is approved once per token.
-
-The Huff build adds:
-
-- Dispatch by caller instead of selector.
-- Packed calldata, with a pool table in bytecode.
-- No `EXTCODESIZE` checks, and bare `revert(0, 0)`.
-
-## Status
-
-| Piece | State |
-| --- | --- |
-| Solidity reference executor, Flow A | Done: 11 tests pass against the official PoolManager v4.0.0, Aqua 0.1.0 and SwapVM v1.0.2 router |
-| Test at the canonical Unichain addresses | Ready; runs on a fork when `UNICHAIN_RPC_URL` is set |
-| Huff executor | Next |
-| `ArbTax` Aqua position and the viem searcher bot | Planned |
-| Gas benchmarks (solc, Solar, Huff) | In progress |
-
-Provisional gas, measured inside `forge test` with warm storage, is about 185,000 per repeat arb. The executor's runtime bytecode is 6,344 bytes with solc 0.8.30 and 3,711 bytes with Solar 0.3.0.
-
-## Quickstart
-
-You need Foundry 1.9 or later and Node 18 or later.
-
-```bash
-git clone --recurse-submodules <this repo> flasharb && cd flasharb
-npm ci
-forge test -vv
-UNICHAIN_RPC_URL=https://<your-rpc> forge test --match-path 'test/fork/*' -vv
-```
+The PoolManager reverts the whole transaction unless every delta nets to zero, so a bad arb costs only gas. One arb moves three ERC20 transfers in total.
 
 ## Where Uniswap is used
 
 | Call | Where |
 | --- | --- |
-| `unlock` and `unlockCallback` | [src/FlashArbExecutor.sol#L77-L81](src/FlashArbExecutor.sol#L77-L81), [#L102-L112](src/FlashArbExecutor.sol#L102-L112) |
-| v4 `swap`, exact-in, deltas only | [#L133-L148](src/FlashArbExecutor.sol#L133-L148) |
-| `sync` and `settle` | [#L152](src/FlashArbExecutor.sol#L152), [#L163](src/FlashArbExecutor.sol#L163) |
-| `take` to pay the maker | [#L128](src/FlashArbExecutor.sol#L128) |
-| ERC-6909 `mint`, `burn` and `take` | [#L168-L172](src/FlashArbExecutor.sol#L168-L172), [#L108-L109](src/FlashArbExecutor.sol#L108-L109) |
+| `unlock` (entry) and `unlockCallback` | [src/FlashArbExecutor.sol#L77-L81](src/FlashArbExecutor.sol#L77-L81), [#L102-L112](src/FlashArbExecutor.sol#L102-L112) |
+| `swap`, the v4 leg (exact-in, deltas only) | [src/FlashArbExecutor.sol#L133-L148](src/FlashArbExecutor.sol#L133-L148) |
+| `sync` + `settle`, Aqua paying straight into the PoolManager | [src/FlashArbExecutor.sol#L152](src/FlashArbExecutor.sol#L152), [#L163](src/FlashArbExecutor.sol#L163) |
+| `take`, paying the Aqua maker from the v4 delta | [src/FlashArbExecutor.sol#L128](src/FlashArbExecutor.sol#L128) |
+| `mint` / `burn` / `take`, ERC-6909 profit claims | [src/FlashArbExecutor.sol#L168-L172](src/FlashArbExecutor.sol#L168-L172), [#L108-L109](src/FlashArbExecutor.sol#L108-L109) |
+| PoolManager, pool and liquidity in tests | [test/base/FlashArbTestBase.sol#L50-L77](test/base/FlashArbTestBase.sol#L50-L77) |
 
 ## Where 1inch Aqua and SwapVM are used
 
 | Call | Where |
 | --- | --- |
-| Router `swap`, v1.0.x ABI | [src/FlashArbExecutor.sol#L150-L162](src/FlashArbExecutor.sol#L150-L162) |
-| Taker header | [#L25-L27](src/FlashArbExecutor.sol#L25-L27) |
-| `preTransferInCallback`, then `Aqua.push` | [#L114-L130](src/FlashArbExecutor.sol#L114-L130) |
-| Strategy built and shipped to Aqua | [test/base/FlashArbTestBase.sol#L92-L112](test/base/FlashArbTestBase.sol#L92-L112) |
+| Router `swap` (deployed v1.0.x ABI) | [src/FlashArbExecutor.sol#L150-L162](src/FlashArbExecutor.sol#L150-L162), [src/interfaces/ISwapVMRouter.sol](src/interfaces/ISwapVMRouter.sol) |
+| Taker header: exact-in, pre-transfer-in callback, output to the PoolManager | [src/FlashArbExecutor.sol#L25-L27](src/FlashArbExecutor.sol#L25-L27) |
+| `preTransferInCallback`, then `Aqua.push` to the maker | [src/FlashArbExecutor.sol#L114-L130](src/FlashArbExecutor.sol#L114-L130) |
+| Strategy built with SwapVM's builders and shipped to Aqua | [test/base/FlashArbTestBase.sol#L92-L112](test/base/FlashArbTestBase.sol#L92-L112) |
+| The header checked against SwapVM's own `TakerTraitsLib.build` | [test/FlashArbExecutor.t.sol](test/FlashArbExecutor.t.sol) (`test_takerHeaderMatchesSwapVMBuilder`) |
 
-## Deployments
+## Quickstart
 
-| Contract | Address |
-| --- | --- |
-| Uniswap v4 PoolManager (Unichain) | `0x1F98400000000000000000000000000000000004` |
-| 1inch Aqua (same on all chains) | `0x1111113CCf1426A8E30e2bfF5E005d929bF6a90a` |
-| 1inch SwapVM router v1.0.x (same on all chains) | `0x111111338c5091E8440b67B168bAe16a668AC0De` |
+You need Foundry 1.9 or later (`foundryup`) and Node 18 or later.
 
-## Prizes targeted
+```bash
+git clone --recurse-submodules <this repo> flasharb && cd flasharb
+npm ci        # SwapVM v1.0.2 and Aqua resolve OpenZeppelin and 1inch utils from npm
+forge test -vv
+```
 
-- **Uniswap, Build with Uniswap:** v4 PoolManager integration, a public repo, `FEEDBACK.md`, and the line links above.
-- **1inch, Build an Aqua App:** the `ArbTax` maker position on the official Aqua and SwapVM contracts, with on-chain token transfers shown in a fork demo.
+`test/FlashArbExecutor.t.sol` deploys the official contracts from their pinned sources. `test/fork/FlashArbExecutorFork.t.sol` runs the same arb at the canonical Unichain addresses:
+
+```bash
+UNICHAIN_RPC_URL=https://<your-unichain-rpc> forge test --match-path 'test/fork/*' -vv
+```
+
+Without `UNICHAIN_RPC_URL`, the fork test rehearses locally by deploying the official sources at those addresses.
+
+## Gas, provisional
+
+These numbers are call-frame gas from `forge test` (`snapshots/FlashArbExecutor.json`). Storage that the test touched earlier is warm, so real transactions cost more; whole-transaction numbers will come from fork receipts.
+
+| Build | First arb, claim | First arb, take | Later arb, claim | Later arb, take | Runtime bytecode |
+| --- | --- | --- | --- | --- | --- |
+| Solidity reference, solc 0.8.30 via-IR | 219,380 | 203,122 | 185,148 | 185,990 | 6,344 B |
+| Same source, Solar 0.3.0 | pending | pending | pending | pending | 3,711 B |
+| Huff (`hnc` 1.7.1) | pending | pending | pending | pending | pending |
+
+The first ERC-6909 mint fills an empty storage slot, so it costs more than a transfer. After that, a claim beats a transfer only slightly.
+
+## Dependencies
+
+| Dependency | Version | Why this version |
+| --- | --- | --- |
+| [Uniswap v4-core](https://github.com/Uniswap/v4-core) | v4.0.0 | The deployed PoolManager |
+| [1inch SwapVM](https://github.com/1inch/swap-vm) | v1.0.2 | The deployed router's ABI; `main` has a different `swap` signature and opcode numbering |
+| [1inch Aqua](https://github.com/1inch/aqua) | 0.1.0 | What SwapVM v1.0.2 builds against |
+| [Solady](https://github.com/Vectorized/solady) | v0.1.26 | `SafeTransferLib` |
+| [foundry-huff-neo](https://github.com/cakevm/foundry-huff-neo) | v1.2.0 | Huff tests, next |
+| `@1inch/solidity-utils`, `@openzeppelin/contracts` (npm) | 6.9.7, 5.4.0 | SwapVM v1.0.2's own pins |
+
+PoolManager pins solc 0.8.26 while SwapVM and Aqua pin 0.8.30. [test/utils/V4Artifacts.sol](test/utils/V4Artifacts.sol) compiles PoolManager on its own, and tests deploy it with `deployCode`.
 
 ## License
 
-flasharb's own code is MIT-licensed. Dependencies keep their own licenses; SwapVM and Aqua use Degensoft licenses.
+flasharb's own code is MIT-licensed. Dependencies keep their own licenses; SwapVM and Aqua use Degensoft licenses (see `lib/swap-vm/LICENSE` and `lib/aqua/LICENSE`).
