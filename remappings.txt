@@ -1,0 +1,9 @@
+forge-std/=lib/forge-std/src/
+v4-core/=lib/v4-core/
+solmate/=lib/v4-core/lib/solmate/
+solady/=lib/solady/src/
+swap-vm/=lib/swap-vm/
+foundry-huff-neo/=lib/foundry-huff-neo/src/
+@1inch/aqua/=lib/aqua/
+@1inch/solidity-utils/=node_modules/@1inch/solidity-utils/
+@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/

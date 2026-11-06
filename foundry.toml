@@ -1,0 +1,27 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+test = "test"
+script = "script"
+# Mixed pragmas: v4-core's PoolManager pins solc 0.8.26, SwapVM v1.0.2 and Aqua 0.1.0 pin 0.8.30.
+# `solc` stays unset so forge picks the right compiler for each compilation unit.
+evm_version = "prague"
+optimizer = true
+optimizer_runs = 700
+via_ir = true
+bytecode_hash = "none"
+auto_detect_remappings = false
+
+# Copied from swap-vm v1.0.2's foundry.toml: without stack allocation, its instruction set
+# fails via-IR compilation with "stack too deep".
+[profile.default.optimizer_details]
+yul = true
+yulDetails = { stackAllocation = true, optimizerSteps = "dhfoDgvulfnTUtnIf[xa[r]EscLMcCTUtTOntnfDIulLculVcul Tpeul]jmul[jul] VcTOcul jmul : fDnTOcmu" }
+
+[rpc_endpoints]
+unichain = "${UNICHAIN_RPC_URL}"
+base = "${BASE_RPC_URL}"
+
+[fuzz]
+runs = 256

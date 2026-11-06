@@ -1,0 +1,9 @@
+{
+  "name": "flasharb",
+  "private": true,
+  "description": "Solidity dependencies that 1inch SwapVM v1.0.2 and Aqua 0.1.0 resolve from npm",
+  "dependencies": {
+    "@1inch/solidity-utils": "6.9.7",
+    "@openzeppelin/contracts": "5.4.0"
+  }
+}

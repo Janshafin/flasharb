@@ -1,0 +1,35 @@
+{
+  "lib/aqua": {
+    "tag": {
+      "name": "0.1.0",
+      "rev": "b51f3b6e3c02fa5208e1429f0f14706b025d9dd6"
+    }
+  },
+  "lib/forge-std": {
+    "rev": "dc647cc030d9d65910d8f1172a0cde48d7106e32"
+  },
+  "lib/foundry-huff-neo": {
+    "tag": {
+      "name": "v1.2.0",
+      "rev": "3e6d092713203bfff6c0389aca4352345b705939"
+    }
+  },
+  "lib/solady": {
+    "tag": {
+      "name": "v0.1.26",
+      "rev": "acd959aa4bd04720d640bf4e6a5c71037510cc4b"
+    }
+  },
+  "lib/swap-vm": {
+    "tag": {
+      "name": "v1.0.2",
+      "rev": "32c687c2b73101fc26549e48fa1ff8a4d73afbac"
+    }
+  },
+  "lib/v4-core": {
+    "tag": {
+      "name": "v4.0.0",
+      "rev": "e50237c43811bd9b526eff40f26772152a42daba"
+    }
+  }
+}
