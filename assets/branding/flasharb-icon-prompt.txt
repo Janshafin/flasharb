@@ -1,0 +1,8 @@
+Generated with the built-in image_gen tool.
+
+Use case: logo-brand.
+Asset type: ONE finished square app icon / project logo for flasharb, a DeFi atomic arbitrage executor connecting Uniswap v4 and 1inch Aqua in a single transaction. Output one 1024x1024 image, not a sheet of options.
+Design: a memorable bold geometric symbol combining two interlocking angular swap arrows into one compact circular loop, with a crisp lightning-bolt shaped negative-space cut through the center. The loop communicates atomic settlement; the lightning cut communicates flash execution. Make it feel like a carefully drawn original identity, balanced, confident, and extremely legible at 32px. Two simple broad arrow ribbons, no fine detail.
+Style: premium flat vector-like logo, Swiss/Bauhaus geometric precision matching the existing site's stark primary-color visual language. Cobalt blue #1b3fe4 upper arrow and vivid red #e63227 lower arrow; unfilled central lightning-shaped cutout. No outlines, gradients, shadows, glow, texture, 3D, or decorative particles.
+Composition: centered single isolated icon, equal optical weight, generous 12 percent transparent safety margin on every side, square 1:1 canvas. Actual transparent background; no background tile. The silhouette must be distinct and coherent.
+Text: none. No wordmark, letters, numbers, watermark, existing token logos, brand mascots, or presentation mockups.
