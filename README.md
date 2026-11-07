@@ -4,7 +4,7 @@ Atomic flash arbitrage between Uniswap v4 and 1inch Aqua, built at ETHGlobal Mum
 
 flasharb borrows through Uniswap v4 flash accounting, so there is no flash-loan fee. It trades against an Aqua strategy priced by 1inch SwapVM and keeps the spread, all inside one `PoolManager.unlock`.
 
-**Status: walking skeleton.** The Solidity reference executor runs Flow A end to end against the official Uniswap v4 PoolManager, Aqua and SwapVM router. The Huff executor, the `ArbTax` Aqua position and the searcher bot come next. The full plan is the [build plan](https://claude.ai/artifact/GBN6BgXjyJqCQ64srJBFgC).
+**Status: the contracts are complete and tested; the bot and dashboard are not published yet.** The Solidity executor runs Flow A against the official Uniswap v4 PoolManager, Aqua and SwapVM router, in both directions, with hardening and invariant tests and local deploy, demo and reseed scripts. A Huff executor ([src/huff/](src/huff/)) is in progress: its first milestone (the getters, `rescue` and `approveAqua`) matches the Solidity reference in 33 differential tests, but it does not run `arb` yet. The searcher bot and the dashboard exist but are held back from this repository until their npm lockfiles can be published. The `ArbTax` Aqua position comes next. The full plan is the [build plan](https://claude.ai/artifact/GBN6BgXjyJqCQ64srJBFgC).
 
 ## How one arb works (Flow A)
 
@@ -52,7 +52,22 @@ forge test -vv
 UNICHAIN_RPC_URL=https://<your-unichain-rpc> forge test --match-path 'test/fork/*' -vv
 ```
 
-Without `UNICHAIN_RPC_URL`, the fork test rehearses locally by deploying the official sources at those addresses.
+No API key is needed: the public endpoint `https://mainnet.unichain.org` works. The fork test only reads chain state and sends nothing; it uses the real deployed PoolManager, Aqua and router with test tokens, a test pool and a test strategy it creates on the fork. Without `UNICHAIN_RPC_URL`, the fork test rehearses locally by deploying the official sources at those addresses.
+
+To run a local chain with the whole stack deployed and a real price gap between the v4 pool and an Aqua strategy (anvil and forge only):
+
+```bash
+scripts/demo-chain.sh     # anvil on 8545, writes deployments/31337.json
+scripts/reseed.sh         # opens a fresh gap
+scripts/demo-stop.sh
+```
+
+The Huff tests compile `src/huff/` with Huff Neo and compare it with the Solidity executor. They use their own Foundry profile, so the default profile keeps `ffi` off:
+
+```bash
+scripts/install-hnc.sh      # pinned hnc 1.7.1 into ./.tools, checksum-verified
+scripts/huff-test.sh -vv    # 38 tests
+```
 
 ## Gas, provisional
 

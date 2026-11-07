@@ -18,6 +18,7 @@ flasharb is a flash-arbitrage executor: Uniswap v4 flash accounting on one side,
 - PoolManager pins solc 0.8.26 and everything 1inch pins 0.8.30. PoolManager compiles through `test/utils/V4Artifacts.sol`, and tests deploy it with `deployCode`. Do not import it into a 0.8.30 file.
 - The Huff executor must behave exactly like `src/FlashArbExecutor.sol`; differential tests compare the two.
 - Keep a gas optimization only if the snapshot moves.
+- Never read the environment or call `vm.setEnv` in Foundry tests: forge runs tests in parallel and env vars are process-wide. Give scripts a `deploy(...)` function that takes parameters.
 - Commit at every gate in the plan's timeline; 1inch reviews the commit history.
 - Keep Aqua and SwapVM as dependencies under their own licenses; never paste their source into this repo.
 
