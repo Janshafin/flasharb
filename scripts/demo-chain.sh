@@ -24,6 +24,9 @@ else
   echo "anvil started (pid $(cat "$STATE/anvil.pid")) on $RPC_URL"
 fi
 
+# A full build first: the setup deploys PoolManager from its artifact (compiled via test/utils/V4Artifacts.sol, since it
+# pins solc 0.8.26), and forge script alone only compiles what the script imports, so a fresh checkout would lack it.
+forge build -q
 forge script script/DemoSetup.s.sol:DemoSetup --rpc-url "$RPC_URL" --broadcast --slow -q
 
 echo
