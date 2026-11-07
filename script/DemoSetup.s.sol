@@ -47,7 +47,7 @@ contract DemoSetup is DemoBase {
         uint256 startBlock;
     }
 
-    function run() external {
+    function run() external virtual {
         Demo memory d = deploy();
         string memory file = string.concat("deployments/", vm.toString(block.chainid), ".json");
         vm.writeFile(file, _json(d));

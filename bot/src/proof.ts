@@ -137,7 +137,8 @@ export function makeProver(client: PublicClient, dep: Deployment, selectors: Sel
   /** Executor transactions found on chain: every claim minted to it (an arb) or burned from it (a withdrawal). */
   async function recent(trades: Trade[]) {
     const head = await client.getBlockNumber({ cacheTime: 0 });
-    const fromBlock = dep.chainId === 31337 ? dep.startBlock : (head > 9_000n ? head - 9_000n : 0n);
+    const recentFloor = head > 9_000n ? head - 9_000n : 0n;
+    const fromBlock = dep.chainId === 31337 || dep.startBlock > recentFloor ? dep.startBlock : recentFloor;
     const ev = eventsAbi[0];
     const [mints, burns] = await Promise.all([
       client.getLogs({ address: dep.poolManager, event: ev, args: { from: ZERO, to: dep.executor }, fromBlock, toBlock: head }),

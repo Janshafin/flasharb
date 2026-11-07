@@ -43,7 +43,9 @@ export default function Proof() {
           <p className={`callout ${p.network.kind === "live" ? "" : "kind-local"}`}>
             {p.network.kind === "local-anvil"
               ? <>Local evidence: anvil chain {p.network.chainId} on this machine, running Uniswap v4, Aqua and SwapVM deployed from their pinned sources. Not a Unichain transaction.</>
-              : <>Live network evidence: chain {p.network.chainId}.</>}
+              : p.network.chainId === 1301
+                ? <>Public testnet evidence: Unichain Sepolia (chain 1301), <a href={`https://sepolia.uniscan.xyz/tx/${p.tx.hash}`} target="_blank" rel="noreferrer">view on Uniscan</a>. Uniswap's own deployed v4 PoolManager; 1inch has not deployed Aqua or the SwapVM router on this testnet, so flasharb deployed both from the same pinned sources. The tokens are test tokens with no value.</>
+                : <>Live network evidence: chain {p.network.chainId}.</>}
           </p>
           {p.kind === "arb" && <Flow p={p} tokens={tokens} />}
 

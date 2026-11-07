@@ -82,6 +82,18 @@ WALLET=0xYourTestAccount scripts/demo.sh
 
 Restarting anvil resets MetaMask's view of the chain: if a send is stuck on a nonce, clear the account's activity in MetaMask (Settings, Advanced).
 
+### Run it on Unichain Sepolia (public testnet)
+
+Unichain Sepolia has Uniswap's deployed v4 PoolManager but no 1inch Aqua or SwapVM router, so [script/TestnetSetup.s.sol](script/TestnetSetup.s.sol) deploys both from the pinned sources, plus test WETH and USDC (no value), a pool with liquidity, the executor and a cheaper Aqua strategy. Your account is the executor's owner and the strategy's maker; no well-known key touches the public network. The whole setup is about 13.2M gas, a tiny fraction of a faucet drip at Unichain Sepolia gas prices.
+
+```bash
+cast wallet import flasharb --interactive    # paste your MetaMask TEST account's key into cast, locally; set a password
+forge script script/TestnetSetup.s.sol:TestnetSetup --rpc-url https://sepolia.unichain.org --account flasharb --broadcast --slow
+scripts/testnet.sh                           # bot (dry-run) and dashboard against deployments/1301.json
+```
+
+In MetaMask pick **Unichain Sepolia**, then trade from **Run a trade** as in the local demo. The Proof page labels these as public testnet transactions and links them on Uniscan; the public RPC may not serve call traces, in which case the page says so and shows the receipt's events.
+
 ## How the bot quotes
 
 The bot needs no separate quoter. It calls the real executor with `eth_call` from the owner and an unreachable `minProfit`. The executor always reverts with `InsufficientProfit(amountBack, amountOwed, minProfit)`, and the profit is `amountBack - amountOwed`, which can be negative. That quote runs the exact on-chain path: the v4 swap, the SwapVM callback, the Aqua push and settle. It works on any chain, including a plain local anvil. [test/FlashArbExecutorHardening.t.sol](test/FlashArbExecutorHardening.t.sol) shows the quote equals the profit a real arb books, in both directions.
