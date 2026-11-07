@@ -1,0 +1,205 @@
+/// @title FlashArbExecutor (Huff) - milestone 1: the shell
+///
+/// A Huff re-implementation of src/FlashArbExecutor.sol. The Solidity contract is the reference: this one must behave
+/// exactly like it, and the differential tests in test-huff/ compare the two on identical state.
+///
+/// WHAT MILESTONE 1 COVERS (and nothing more)
+///   Implemented, and tested against the reference:
+///     OWNER(), POOL_MANAGER(), ROUTER(), AQUA(), TAKER_HEADER()   read-only getters
+///     rescue(address,address,uint256)                             owner only; Solady safeTransfer
+///     approveAqua(address[])                                      owner only; Solady safeApproveWithRetry
+///     the custom errors NotOwner(), TransferFailed(), ApproveFailed()
+///     the dispatcher: unknown selector, short calldata and any ETH value revert with empty data
+///   NOT implemented yet, so these selectors revert with empty data (the reference does real work here):
+///     arb(...), withdrawClaim(...), unlockCallback(bytes), preTransferInCallback(...)
+///   This contract never calls the Uniswap PoolManager, never calls the SwapVM router and never trades.
+///
+/// COMPILE-TIME CONSTANTS (prototype only)
+///   Until milestone 4 the four addresses below are baked into the bytecode at compile time, the way a Solidity
+///   `immutable` is, but taken from the compiler command line (`hnc ... -c OWNER_ADDRESS=0x...`; the tests pass them
+///   with foundry-huff-neo's with_constant). The defaults below are the ZERO address on purpose: a build that forgets
+///   to override them is visibly wrong. The Solidity constructor rejects zero addresses; this prototype does not,
+///   because it has no constructor yet. That is a known difference, closed in milestone 4 (constructor parity).
+///
+///   | Constant              | Meaning                                              | Value in a real build        |
+///   | --------------------- | ---------------------------------------------------- | ---------------------------- |
+///   | POOL_MANAGER_ADDRESS  | Uniswap v4 PoolManager (returned by POOL_MANAGER())  | set per chain with -c        |
+///   | ROUTER_ADDRESS        | 1inch SwapVM router (returned by ROUTER())           | set per chain with -c        |
+///   | AQUA_ADDRESS          | 1inch Aqua; approveAqua() approves tokens to it      | set per chain with -c        |
+///   | OWNER_ADDRESS         | the only account allowed to call rescue/approveAqua  | set per deployment with -c   |
+///   | TAKER_HEADER_WORD     | SwapVM taker-traits header, 22 bytes, right-padded   | fixed: copied from the .sol  |
+///
+///   TAKER_HEADER_WORD is not a per-deployment value. It is the 22-byte constant
+///   0x00140014001400140014001400140014001400000005 from FlashArbExecutor.sol (TAKER_HEADER), padded on the right
+///   with zeros to 32 bytes because that is how the ABI returns a bytes22.
+///   The tests also check it against SwapVM's own TakerTraitsLib builder through the Solidity reference.
+
+#define constant POOL_MANAGER_ADDRESS = 0x0000000000000000000000000000000000000000
+#define constant ROUTER_ADDRESS = 0x0000000000000000000000000000000000000000
+#define constant AQUA_ADDRESS = 0x0000000000000000000000000000000000000000
+#define constant OWNER_ADDRESS = 0x0000000000000000000000000000000000000000
+#define constant TAKER_HEADER_WORD = 0x0014001400140014001400140014001400140000000500000000000000000000
+
+#define function OWNER() view returns (address)
+#define function POOL_MANAGER() view returns (address)
+#define function ROUTER() view returns (address)
+#define function AQUA() view returns (address)
+#define function TAKER_HEADER() view returns (bytes22)
+#define function rescue(address,address,uint256) nonpayable returns ()
+#define function approveAqua(address[]) nonpayable returns ()
+
+#define error NotOwner()
+#define error TransferFailed()
+#define error ApproveFailed()
+
+/// Returns the word on top of the stack as a 32-byte ABI return value.
+#define macro RETURN_WORD() = takes (1) returns (0) {
+    0x00 mstore
+    0x20 0x00 return
+}
+
+/// Reverts with NotOwner() unless the caller is the owner.
+#define macro ONLY_OWNER() = takes (0) returns (0) {
+    caller [OWNER_ADDRESS] eq is_owner jumpi
+    __ERROR(NotOwner) 0x00 mstore
+    0x04 0x00 revert
+    is_owner:
+}
+
+/// rescue(address token, address to, uint256 amount): owner only, then Solady's safeTransfer(token, to, amount).
+/// Same order as the reference: calldata is decoded and validated first, then the owner is checked, then the call is made.
+#define macro RESCUE() = takes (0) returns (0) {
+    // Decode: three static arguments need 4 + 96 bytes; an address argument with dirty high bits is rejected.
+    0x64 calldatasize lt rescue_bad_input jumpi
+    0x04 calldataload 0xa0 shr rescue_bad_input jumpi
+    0x24 calldataload 0xa0 shr rescue_bad_input jumpi
+
+    ONLY_OWNER()
+
+    // transfer(to, amount): arguments written to the same memory offsets Solady uses (0x10 .. 0x54).
+    0x24 calldataload 0x14 mstore
+    0x44 calldataload 0x34 mstore
+    0xa9059cbb000000000000000000000000 0x00 mstore
+
+    // success := call(gas(), token, 0, 0x10, 0x44, 0x00, 0x20)
+    0x20 0x00 0x44 0x10 0x00 0x04 calldataload gas call               // [success]
+    dup1 0x00 mload 0x01 eq and rescue_done jumpi                       // returned exactly 1 and succeeded: fine
+    // Otherwise fine only if the call succeeded, the token has code and it returned nothing.
+    0x04 calldataload extcodesize iszero returndatasize or              // [success, noCodeOrReturned]
+    lt iszero rescue_failed jumpi
+    rescue_finish jump
+    rescue_done:
+        pop
+    rescue_finish:
+    0x00 0x34 mstore
+    stop
+
+    rescue_failed:
+        __ERROR(TransferFailed) 0x00 mstore
+        0x04 0x00 revert
+    rescue_bad_input:
+        0x00 0x00 revert
+}
+
+/// Approves AQUA_ADDRESS to spend the maximum of the token on top of the stack, Solady's safeApproveWithRetry:
+/// if the first approve does not clearly succeed, reset the allowance to zero and try once more.
+#define macro APPROVE_WITH_RETRY() = takes (1) returns (0) {
+    [AQUA_ADDRESS] 0x14 mstore
+    0x00 not 0x34 mstore
+    0x095ea7b3000000000000000000000000 0x00 mstore
+
+    // success := call(gas(), token, 0, 0x10, 0x44, 0x00, 0x20)
+    0x20 0x00 0x44 0x10 0x00 dup6 gas call                              // [token, success]
+    dup1 0x00 mload 0x01 eq and approve_done jumpi
+    dup2 extcodesize iszero returndatasize or                           // [token, success, noCodeOrReturned]
+    lt iszero approve_retry jumpi
+    approve_finish jump
+
+    approve_retry:
+        // Reset the allowance to zero (result ignored), then restore the amount and try again.
+        0x00 0x34 mstore
+        0x095ea7b3000000000000000000000000 0x00 mstore
+        0x00 0x00 0x44 0x10 0x00 dup6 gas call pop
+        0x00 not 0x34 mstore
+        0x20 0x00 0x44 0x10 0x00 dup6 gas call                          // [token, success]
+        dup1 0x00 mload 0x01 eq and approve_done jumpi
+        dup2 extcodesize iszero returndatasize or
+        lt iszero approve_failed jumpi
+        approve_finish jump
+
+    approve_done:
+        pop
+    approve_finish:
+    pop                                                                 // the token
+    0x00 0x34 mstore
+    approve_end jump                                                    // continue after the macro
+
+    approve_failed:
+        __ERROR(ApproveFailed) 0x00 mstore
+        0x04 0x00 revert
+    approve_end:
+}
+
+/// approveAqua(address[] tokens): owner only; approves AQUA_ADDRESS for every token in the array.
+/// Calldata layout: [selector][offset to the array][... array: length, then one word per token ...].
+#define macro APPROVE_AQUA() = takes (0) returns (0) {
+    // Decode and validate the dynamic array the way the Solidity ABI decoder does (all failures revert with no data).
+    0x24 calldatasize lt aqua_bad_input jumpi                           // need the offset word
+    0x04 calldataload                                                   // [offset]
+    dup1 0xffffffffffffffff lt aqua_bad_input jumpi                     // offset must fit in 64 bits
+    dup1 0x24 add calldatasize lt aqua_bad_input jumpi                  // the length word must be inside calldata
+    dup1 0x04 add calldataload                                          // [offset, length]
+    dup1 0xffffffffffffffff lt aqua_bad_input jumpi                     // length must fit in 64 bits
+    swap1 0x24 add swap1                                                // [start, length]   start = byte position of element 0
+    0x05 shl dup2 add                                                   // [start, end]      end = start + 32 * length
+    dup1 calldatasize lt aqua_bad_input jumpi                           // the whole array must be inside calldata
+
+    ONLY_OWNER()
+
+    swap1                                                               // [end, ptr]
+    aqua_loop:
+        dup2 dup2 lt iszero aqua_exit jumpi                             // stop when ptr >= end
+        dup1 calldataload                                               // [end, ptr, token]
+        dup1 0xa0 shr aqua_bad_input jumpi                              // an element with dirty high bits is rejected
+        APPROVE_WITH_RETRY()                                            // consumes the token
+        0x20 add
+        aqua_loop jump
+    aqua_exit:
+        stop
+
+    aqua_bad_input:
+        0x00 0x00 revert
+}
+
+#define macro MAIN() = takes (0) returns (0) {
+    // Nothing is payable and there is no fallback: any ETH, or fewer than 4 bytes of calldata, reverts with no data.
+    callvalue main_revert jumpi
+    0x04 calldatasize lt main_revert jumpi
+
+    0x00 calldataload 0xe0 shr                                          // [selector]
+    dup1 __FUNC_SIG(OWNER) eq main_owner jumpi
+    dup1 __FUNC_SIG(POOL_MANAGER) eq main_pool_manager jumpi
+    dup1 __FUNC_SIG(ROUTER) eq main_router jumpi
+    dup1 __FUNC_SIG(AQUA) eq main_aqua jumpi
+    dup1 __FUNC_SIG(TAKER_HEADER) eq main_taker_header jumpi
+    dup1 __FUNC_SIG(rescue) eq main_rescue jumpi
+    dup1 __FUNC_SIG(approveAqua) eq main_approve_aqua jumpi
+    // Any other selector, including the not-yet-implemented arb, withdrawClaim and the callbacks, reverts with no data.
+    main_revert:
+        0x00 0x00 revert
+
+    main_owner:
+        [OWNER_ADDRESS] RETURN_WORD()
+    main_pool_manager:
+        [POOL_MANAGER_ADDRESS] RETURN_WORD()
+    main_router:
+        [ROUTER_ADDRESS] RETURN_WORD()
+    main_aqua:
+        [AQUA_ADDRESS] RETURN_WORD()
+    main_taker_header:
+        [TAKER_HEADER_WORD] RETURN_WORD()
+    main_rescue:
+        RESCUE()
+    main_approve_aqua:
+        APPROVE_AQUA()
+}
