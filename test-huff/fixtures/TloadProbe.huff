@@ -1,0 +1,6 @@
+/// Test fixture: uses TLOAD, an opcode that exists from the Cancun EVM on. Compiling it for an older EVM must fail,
+/// which proves the compiler really honours the EVM version the tests pass.
+#define macro MAIN() = takes (0) returns (0) {
+    0x01 tload pop
+    0x00 0x00 return
+}

@@ -1,0 +1,10 @@
+/// Toolchain probe for the Huff Neo compiler (hnc). It is not part of the executor.
+///
+/// Answers every call with one 32-byte word. ANSWER is a compile-time constant: the default is 42, and a build can
+/// replace it with `hnc -c ANSWER=0x...`. The executor prototype uses the same mechanism for its addresses.
+#define constant ANSWER = 0x2a
+
+#define macro MAIN() = takes (0) returns (0) {
+    [ANSWER] 0x00 mstore
+    0x20 0x00 return
+}
