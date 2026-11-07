@@ -39,10 +39,10 @@ The PoolManager reverts the whole transaction unless every delta nets to zero, s
 ## Which link should I open?
 
 - **GitHub source:** https://github.com/Janshafin/flasharb — the published code, not a hosted application.
-- **Local app:** http://localhost:5173/#/app — works on the same computer **only while** `scripts/demo.sh` is running. Open the printed dashboard address after the script starts.
+- **Local app:** http://127.0.0.1:5173/#/app — works on the same computer **only while** `scripts/demo.sh` is running; the script opens it for you. The **Execution proof** page is http://127.0.0.1:5173/#/app/proof.
 - **Bot API:** http://127.0.0.1:8787/api/status — must also be running for live opportunities, profit and status. The dashboard reads the API at this local address by default.
 
-If localhost refuses the connection, start the demo from the repository directory, keep the terminal open, and inspect `.demo/web.log` and `.demo/bot.log` if startup fails. Remote VS Code or container setups need port forwarding and a reachable RPC; localhost always refers to the browser's own computer.
+Use `127.0.0.1`, not `localhost`: on macOS `localhost` resolves to the IPv6 address `::1` first, and the dashboard listens on IPv4 only, so some browsers fail to connect. If the page still does not open, keep the demo's terminal open: when a service fails to start, the script names it and prints the end of its log (`.demo/chain.log`, `.demo/bot.log` or `.demo/web.log`). Remote VS Code or container setups need port forwarding and a reachable RPC; `127.0.0.1` always refers to the browser's own computer.
 
 **There is no public hosted app URL yet.** Running `npm run build` only creates static frontend files; to host a fully working shared dashboard, deploy both the frontend and a reachable bot API, then configure `VITE_BOT_API_URL`. Local Anvil demo addresses and test liquidity are not Unichain mainnet deployments.
 
@@ -56,7 +56,7 @@ npm ci
 scripts/demo.sh
 ```
 
-Open <http://localhost:5173>. Within seconds the bot finds the gap between a 3,000 USDC per WETH v4 pool and an Aqua strategy selling WETH about 3.4% cheaper, sizes the trade, sends it and books the profit as an ERC-6909 claim. `scripts/reseed.sh` opens a new gap. Two variations:
+The script opens <http://127.0.0.1:5173/#/app> (set `OPEN=0` to skip that). Within seconds the bot finds the gap between a 3,000 USDC per WETH v4 pool and an Aqua strategy selling WETH about 3.4% cheaper, sizes the trade, sends it and books the profit as an ERC-6909 claim. The **Proof** page then shows that transaction as the chain records it: the call trace through the PoolManager, the SwapVM router and Aqua, the receipt's events, gas, and the claim before and after. `scripts/reseed.sh` opens a new gap. Ctrl-C stops everything and frees the ports. Two variations:
 
 - `BOT_MODE=dry scripts/demo.sh` keeps the bot from sending. It still lists trades on the Overview page.
 - `RESEED_EVERY=45 scripts/demo.sh` opens a fresh gap every 45 seconds so the demo keeps trading.
@@ -73,11 +73,12 @@ WALLET=0xYourTestAccount scripts/demo.sh
 
 [`scripts/demo-wallet.sh`](scripts/demo-wallet.sh) runs on the local chain only. It deploys a second, unchanged `FlashArbExecutor` whose `OWNER` is that address, gives the address 100 local test ETH, approves Aqua for the executor and points `deployments/31337.json` at it. The bot then runs in dry-run mode: it quotes for your executor but never sends, so it cannot take the trade before you do. No key of yours is used or stored.
 
-1. Open <http://localhost:5173/#/app>, connect MetaMask and pick **Local demo** in the network menu (it offers to add chain 31337 with RPC `http://127.0.0.1:8545`).
+1. Open <http://127.0.0.1:5173/#/app>, connect MetaMask and pick **Local demo** in the network menu (it offers to add chain 31337 with RPC `http://127.0.0.1:8545`).
 2. On the Overview page, load the ready opportunity into the console. The console shows the pair, direction, the bot's gross profit, gas and net profit, and the minimum profit.
 3. **Simulate**, then **Send** and confirm in MetaMask. The log shows the hash, block, gas and the profit read back from chain.
 4. The profit is an ERC-6909 claim held by the executor inside the PoolManager, not a token in your wallet. **Withdraw** under Claims turns it into WETH in your wallet.
-5. `scripts/reseed.sh` opens the next gap.
+5. The **Proof** page lists your arbitrage and your withdrawal with their receipts and traces.
+6. `scripts/reseed.sh` opens the next gap.
 
 Restarting anvil resets MetaMask's view of the chain: if a send is stuck on a nonce, clear the account's activity in MetaMask (Settings, Advanced).
 
