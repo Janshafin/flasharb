@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import Landing from "./components/Landing";
 import Monitor from "./components/Monitor";
 import Execute from "./components/Execute";
+import Proof from "./components/Proof";
 import { WalletProvider, chains, short, useWallet } from "./lib/wallet";
 import { fmtUnits } from "./lib/format";
 
-type Route = "home" | "monitor" | "execute";
+type Route = "home" | "monitor" | "execute" | "proof";
 const parse = (): Route =>
-  location.hash.startsWith("#/app/execute") ? "execute" : location.hash.startsWith("#/app") ? "monitor" : "home";
+  location.hash.startsWith("#/app/execute") ? "execute" : location.hash.startsWith("#/app/proof") ? "proof" : location.hash.startsWith("#/app") ? "monitor" : "home";
 
 function useRoute() {
   const [r, setR] = useState<Route>(parse);
@@ -64,6 +65,7 @@ function Bar({ route }: { route: Route }) {
           <>
             <a href="#/app" aria-current={route === "monitor" ? "page" : undefined}>Overview</a>
             <a href="#/app/execute" aria-current={route === "execute" ? "page" : undefined}>Run a trade</a>
+            <a href="#/app/proof" aria-current={route === "proof" ? "page" : undefined}>Proof</a>
             <a href="#/">Home</a>
             <Wallet />
           </>
@@ -78,7 +80,7 @@ export default function App() {
   return (
     <WalletProvider>
       <Bar route={route} />
-      {route === "home" ? <Landing /> : <main className="app">{route === "monitor" ? <Monitor /> : <Execute />}</main>}
+      {route === "home" ? <Landing /> : <main className="app">{route === "monitor" ? <Monitor /> : route === "proof" ? <Proof /> : <Execute />}</main>}
     </WalletProvider>
   );
 }

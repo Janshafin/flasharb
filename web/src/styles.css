@@ -73,7 +73,7 @@ table.flat { width: 100%; border-collapse: collapse; font-size: 17px; line-heigh
 .flat td { padding: 14px 16px 14px 0; border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent); vertical-align: top; }
 .flat td:last-child, .flat th:last-child { padding-right: 0; }
 .flat mark { background: var(--yellow); color: var(--ink); padding: 2px 8px; font-weight: 600; }
-.tw { overflow-x: auto; }
+.tw { overflow-x: auto; position: relative; }
 
 /* hero stage: the one bold element */
 .stage { margin: 0; }
@@ -217,3 +217,37 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--
 .claims { list-style: none; padding: 0; display: flex; flex-direction: column; font-size: 16px; }
 .claims li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid #cfcfcf; }
 .plain .btn.small { min-height: 44px; }
+
+/* Execution proof */
+.proofpick { display: flex; flex-wrap: wrap; } .proofpick button { flex: 1 1 260px; padding: 8px 14px; border-left: 0 !important; border-top: 3px solid var(--ink); margin-top: -3px; }
+.proofpick button[aria-pressed="true"] { background: var(--ink); color: var(--white); }
+.flow { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); }
+.leg { padding: 24px; display: flex; flex-direction: column; gap: 14px; min-height: 200px; }
+.leg b { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+.leg.uni { background: var(--blue); color: var(--white); }
+.leg.inch { background: var(--red); color: var(--white); }
+.leg.settle { background: var(--ink); color: var(--white); }
+.leg.settle b { color: var(--yellow); }
+.leg code, .note code, .callout code { font-weight: 600; overflow-wrap: anywhere; }
+.callout.kind-local { background: var(--grey); }
+.proof td { vertical-align: top; } .proof td:first-child { font-weight: 600; white-space: nowrap; }
+.wrap { overflow-wrap: anywhere; }
+.trace { list-style: none; padding: 0; border-top: 2px solid var(--ink); }
+.trace li { padding-left: calc(12px + var(--d, 0) * 22px); display: flex; justify-content: space-between; gap: 16px; padding-top: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--grey); border-left: 6px solid var(--grey); }
+.trace li.uni { border-left-color: var(--blue); } .trace li.inch { border-left-color: var(--red); } .trace li.exec { border-left-color: var(--yellow); }
+.trace em { font-style: normal; color: var(--muted); white-space: nowrap; padding-right: 8px; }
+.evs .args { overflow-wrap: anywhere; font-size: 15px; }
+@media (max-width: 900px) { .flow { grid-template-columns: 1fr; } .proof td:first-child { white-space: normal; } .proof th:nth-child(3) { width: 34%; } }
+@media (max-width: 600px) { .trace li { padding-left: calc(6px + var(--d, 0) * 8px); flex-wrap: wrap; gap: 0 12px; } .trace em { white-space: normal; } .proof, .evs { font-size: 15px; } }
+.evs { width: 100%; table-layout: fixed; } .evs th:nth-child(1) { width: 24%; } .evs th:nth-child(2) { width: 22%; }
+.evs td { overflow-wrap: anywhere; }
+.proof { width: 100%; table-layout: fixed; } .proof th:nth-child(1) { width: 22%; } .proof th:nth-child(3) { width: 30%; }
+.proof td, .evs td { white-space: normal; }
+@media (max-width: 700px) { table.plain:not(.proof):not(.evs) { display: block; overflow-x: auto; } }
+@media (max-width: 600px) {
+  .proof thead { display: none; }
+  .proof, .proof tbody, .proof tr, .proof td { display: block; width: auto; }
+  .proof tr { padding: 10px 0; border-bottom: 1px solid #cfcfcf; }
+  .proof td { border: 0; padding: 2px 0; overflow-wrap: anywhere; }
+  .proof td:last-child { color: var(--muted); font-size: 14px; }
+}
