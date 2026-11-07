@@ -12,6 +12,8 @@ optimizer_runs = 700
 via_ir = true
 bytecode_hash = "none"
 auto_detect_remappings = false
+# deployCode reads artifacts from out/; scripts write and read deployment records in deployments/.
+fs_permissions = [{ access = "read", path = "./out" }, { access = "read-write", path = "./deployments" }]
 
 # Copied from swap-vm v1.0.2's foundry.toml: without stack allocation, its instruction set
 # fails via-IR compilation with "stack too deep".
@@ -25,3 +27,13 @@ base = "${BASE_RPC_URL}"
 
 [fuzz]
 runs = 256
+
+# Huff executor tests. Run them with FOUNDRY_PROFILE=huff (scripts/huff-test.sh does). The default profile above is
+# unchanged and keeps `ffi` off; only this profile lets tests run the Huff compiler. The tests live in test-huff/ so a
+# plain `forge test` never sees them, and separate output directories keep the two profiles from rebuilding each other.
+[profile.huff]
+test = "test-huff"
+ffi = true
+out = "out-huff"
+cache_path = "cache-huff"
+fs_permissions = [{ access = "read", path = "./out-huff" }, { access = "read-write", path = "./deployments" }]

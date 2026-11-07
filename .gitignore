@@ -21,3 +21,20 @@ docs/
 
 # npm-resolved Solidity dependencies (SwapVM v1.0.2 and Aqua)
 node_modules/
+
+# Frontend and bot build output, local demo state
+web/dist/
+bot/data/
+bot/STOP
+deployments/31337.json
+
+# Local demo chain state (pid, logs)
+.demo/
+
+# Local test records written by script tests
+deployments/_*.json
+
+# Huff toolchain and the Huff profile's build output
+.tools/
+out-huff/
+cache-huff/
