@@ -36,12 +36,22 @@ The PoolManager reverts the whole transaction unless every delta nets to zero, s
 | Strategy built with SwapVM's builders and shipped to Aqua | [test/base/FlashArbTestBase.sol#L92-L112](test/base/FlashArbTestBase.sol#L92-L112) |
 | The header checked against SwapVM's own `TakerTraitsLib.build` | [test/FlashArbExecutor.t.sol](test/FlashArbExecutor.t.sol) (`test_takerHeaderMatchesSwapVMBuilder`) |
 
+## Which link should I open?
+
+- **GitHub source:** https://github.com/Janshafin/flasharb — the published code, not a hosted application.
+- **Local app:** http://localhost:5173/#/app — works on the same computer **only while** `scripts/demo.sh` is running. Open the printed dashboard address after the script starts.
+- **Bot API:** http://127.0.0.1:8787/api/status — must also be running for live opportunities, profit and status. The dashboard reads the API at this local address by default.
+
+If localhost refuses the connection, start the demo from the repository directory, keep the terminal open, and inspect `.demo/web.log` and `.demo/bot.log` if startup fails. Remote VS Code or container setups need port forwarding and a reachable RPC; localhost always refers to the browser's own computer.
+
+**There is no public hosted app URL yet.** Running `npm run build` only creates static frontend files; to host a fully working shared dashboard, deploy both the frontend and a reachable bot API, then configure `VITE_BOT_API_URL`. Local Anvil demo addresses and test liquidity are not Unichain mainnet deployments.
+
 ## Run the demo
 
 You need Foundry 1.9 or later and Node 18 or later. One command starts a local chain, deploys the whole stack, opens a real price gap, starts the bot and serves the dashboard:
 
 ```bash
-git clone --recurse-submodules <this repo> flasharb && cd flasharb
+git clone --recurse-submodules https://github.com/Janshafin/flasharb.git && cd flasharb
 npm ci
 scripts/demo.sh
 ```
@@ -104,7 +114,7 @@ A failed or stale trade costs only gas, because the PoolManager reverts the whol
 To work on the contracts only:
 
 ```bash
-git clone --recurse-submodules <this repo> flasharb && cd flasharb
+git clone --recurse-submodules https://github.com/Janshafin/flasharb.git && cd flasharb
 npm ci        # SwapVM v1.0.2 and Aqua resolve OpenZeppelin and 1inch utils from npm
 forge test -vv
 ```
