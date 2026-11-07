@@ -263,3 +263,4 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--
 .steps p { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .steps code { font-weight: 600; overflow-wrap: anywhere; }
 .steps .cmd { display: block; width: 100%; background: var(--white); padding: 10px 12px; border: 2px solid var(--ink); }
+.hosted { margin: 0; max-width: none; border-radius: 0; }

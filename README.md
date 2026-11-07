@@ -36,6 +36,20 @@ The PoolManager reverts the whole transaction unless every delta nets to zero, s
 | Strategy built with SwapVM's builders and shipped to Aqua | [test/base/FlashArbTestBase.sol#L92-L112](test/base/FlashArbTestBase.sol#L92-L112) |
 | The header checked against SwapVM's own `TakerTraitsLib.build` | [test/FlashArbExecutor.t.sol](test/FlashArbExecutor.t.sol) (`test_takerHeaderMatchesSwapVMBuilder`) |
 
+## Start the app
+
+From the folder you cloned (it must contain `bot/`, `web/` and `scripts/`):
+
+```bash
+./flasharb.sh                      # local demo: chain, contracts, bot and dashboard, then opens http://127.0.0.1:5173/#/app
+./flasharb.sh wallet 0xYourTestAcct  # same, but you trade from MetaMask with that test account
+./flasharb.sh testnet              # Unichain Sepolia: deploys once with your Foundry keystore, then bot and dashboard
+./flasharb.sh reseed               # a new price gap, from a second terminal
+./flasharb.sh stop                 # stop anything a run left behind
+```
+
+The first run installs the npm packages and submodules it needs. Each step prints a check mark; if one fails, the script says which service failed and prints the end of its log. Keep the terminal open: the app runs only while it does.
+
 ## Which link should I open?
 
 - **GitHub source:** https://github.com/Janshafin/flasharb — the published code, not a hosted application.
@@ -87,10 +101,11 @@ Restarting anvil resets MetaMask's view of the chain: if a send is stuck on a no
 Unichain Sepolia has Uniswap's deployed v4 PoolManager but no 1inch Aqua or SwapVM router, so [script/TestnetSetup.s.sol](script/TestnetSetup.s.sol) deploys both from the pinned sources, plus test WETH and USDC (no value), a pool with liquidity, the executor and a cheaper Aqua strategy. Your account is the executor's owner and the strategy's maker; no well-known key touches the public network. The whole setup is about 13.2M gas, a tiny fraction of a faucet drip at Unichain Sepolia gas prices.
 
 ```bash
-cast wallet import flasharb --interactive    # paste your MetaMask TEST account's key into cast, locally; set a password
-forge script script/TestnetSetup.s.sol:TestnetSetup --rpc-url https://sepolia.unichain.org --account flasharb --broadcast --slow
-scripts/testnet.sh                           # bot (dry-run) and dashboard against deployments/1301.json
+cast wallet import flasharb --interactive    # once: paste your MetaMask TEST account's key into cast, locally; set a password
+./flasharb.sh testnet                        # checks the account and its faucet ETH, deploys once, then starts the app
 ```
+
+The deploy step is `forge script script/TestnetSetup.s.sol:TestnetSetup --rpc-url https://sepolia.unichain.org --account flasharb --broadcast --slow` if you prefer to run it yourself. A hosted copy of the dashboard (for example on Vercel) cannot reach the bot on your computer and says so on the page; run the app locally.
 
 In MetaMask pick **Unichain Sepolia**, then trade from **Run a trade** as in the local demo. The Proof page labels these as public testnet transactions and links them on Uniscan; the public RPC may not serve call traces, in which case the page says so and shows the receipt's events.
 

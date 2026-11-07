@@ -5,6 +5,7 @@ import Execute from "./components/Execute";
 import Proof from "./components/Proof";
 import { WalletProvider, chains, short, useWallet } from "./lib/wallet";
 import { fmtUnits } from "./lib/format";
+import { BOT_API } from "./lib/api";
 
 type Route = "home" | "monitor" | "execute" | "proof";
 const parse = (): Route =>
@@ -75,11 +76,25 @@ function Bar({ route }: { route: Route }) {
   );
 }
 
+/** A hosted copy (for example on Vercel) cannot reach the bot, which runs on the developer's own computer. */
+function HostedNotice() {
+  const local = ["127.0.0.1", "localhost", "[::1]"].includes(location.hostname);
+  if (local || !/127\.0\.0\.1|localhost/.test(BOT_API)) return null;
+  return (
+    <p className="callout bad hosted" role="alert">
+      This is a hosted copy of the dashboard, so it cannot reach the searcher bot: the bot and the local chain run on the
+      demo computer. To use the app, clone the repository and run <code>./flasharb.sh</code>, then open
+      {" "}<a href="http://127.0.0.1:5173/#/app">http://127.0.0.1:5173/#/app</a> on that computer.
+    </p>
+  );
+}
+
 export default function App() {
   const route = useRoute();
   return (
     <WalletProvider>
       <Bar route={route} />
+      <HostedNotice />
       {route === "home" ? <Landing /> : <main className="app">{route === "monitor" ? <Monitor /> : route === "proof" ? <Proof /> : <Execute />}</main>}
     </WalletProvider>
   );
