@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { PublicClient } from "viem";
 import { erc20Abi, executorAbi, poolManagerAbi } from "./abi";
 import type { Config } from "./config";
+import type { makeProver } from "./proof";
 import type { TradeStore } from "./store";
 import type { Address, Deployment, Opportunity } from "./types";
 
@@ -18,8 +19,10 @@ export type AppState = {
 
 const json = (_k: string, v: unknown) => (typeof v === "bigint" ? v.toString() : v);
 
-export function startServer(opts: { cfg: Config; dep: Deployment; client: PublicClient; store: TradeStore; state: AppState }): Server {
-  const { cfg, dep, client, store, state } = opts;
+export function startServer(opts: {
+  cfg: Config; dep: Deployment; client: PublicClient; store: TradeStore; state: AppState; prover?: ReturnType<typeof makeProver>;
+}): Server {
+  const { cfg, dep, client, store, state, prover } = opts;
 
   const send = (req: IncomingMessage, res: ServerResponse, status: number, body: unknown) => {
     const origin = req.headers.origin;
@@ -90,6 +93,15 @@ export function startServer(opts: { cfg: Config; dep: Deployment; client: Public
             }),
           );
           return send(req, res, 200, { claims });
+        }
+        case "/api/proofs":
+          if (!prover) return send(req, res, 404, { error: "Proofs are not enabled." });
+          return send(req, res, 200, { executor: dep.executor, transactions: await prover.recent(store.recent(200)) });
+        case "/api/proof": {
+          if (!prover) return send(req, res, 404, { error: "Proofs are not enabled." });
+          const tx = url.searchParams.get("tx") ?? "";
+          if (!/^0x[0-9a-fA-F]{64}$/.test(tx)) return send(req, res, 400, { error: "Pass ?tx= with a 32-byte transaction hash." });
+          return send(req, res, 200, await prover.prove(tx as `0x${string}`, store.recent(200)));
         }
         default:
           return send(req, res, 404, { error: "Unknown endpoint." });

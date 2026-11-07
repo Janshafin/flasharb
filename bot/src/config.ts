@@ -6,6 +6,8 @@ export type Config = {
   rpcUrl: string;
   chainId: number;
   deploymentsPath: string;
+  /** forge's build output; the proof endpoint names traced calls from it. */
+  artifactsDir: string;
   dryRun: boolean;
   ownerKey?: Hex;
   pollMs: number;
@@ -106,6 +108,7 @@ export function parseConfig(env: NodeJS.ProcessEnv): Config {
     rpcUrl,
     chainId,
     deploymentsPath: resolve(env.DEPLOYMENTS ?? `../deployments/${chainId}.json`),
+    artifactsDir: resolve(env.ARTIFACTS_DIR ?? "../out"),
     dryRun,
     ownerKey,
     pollMs,

@@ -5,6 +5,7 @@ import { ConfigError, loadDotenv, parseConfig } from "./config";
 import { loadDeployment } from "./deployments";
 import { Trader } from "./execute";
 import { makeLogger } from "./log";
+import { loadSelectors, makeProver } from "./proof";
 import { scanOnce, type ScanCtx } from "./scanner";
 import { startServer, type AppState } from "./server";
 import { TradeStore } from "./store";
@@ -63,7 +64,8 @@ async function main() {
     opportunities: [], startedAt: Date.now(), lastScanAt: null, scanCount: 0, lastError: undefined,
     head: 0n, botAddress, stopped: () => trader.stopped(),
   };
-  const server = startServer({ cfg, dep, client, store, state });
+  const prover = makeProver(client, dep, loadSelectors(cfg.artifactsDir));
+  const server = startServer({ cfg, dep, client, store, state, prover });
   log.info(`flasharb bot up: chain ${chainId}, executor ${dep.executor}, ${cfg.dryRun ? "DRY RUN (no transactions)" : "LIVE"}, api http://127.0.0.1:${cfg.port}`);
 
   let running = true;

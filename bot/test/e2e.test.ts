@@ -9,6 +9,7 @@ import { parseConfig } from "../src/config";
 import { loadDeployment } from "../src/deployments";
 import { Trader } from "../src/execute";
 import { makeLogger } from "../src/log";
+import { loadSelectors, makeProver } from "../src/proof";
 import { scanOnce, type ScanCtx } from "../src/scanner";
 import { TradeStore } from "../src/store";
 import { StrategyTracker } from "../src/tracker";
@@ -100,6 +101,25 @@ describe.skipIf(!process.env.DEMO_E2E)("bot against the local demo chain", () =>
     const after = await scanOnce(ctx);
     expect(after.find((o) => o.status === "ready" && o.direction === "sell-currency0")).toBeUndefined();
   }, 120_000);
+
+  it("proves the trade from the chain: receipt, claim delta and every protocol call in the trace", async () => {
+    const { store } = build(false);
+    const trades = store.all();
+    const prover = makeProver(client, dep, loadSelectors(join(root, "out")));
+    const listed = await prover.recent(trades);
+    expect(listed.map((t) => t.txHash)).toContain(trades[0].txHash);
+    const p = (await prover.prove(trades[0].txHash!, trades)) as any;
+    expect(p.tx.status).toBe("success");
+    expect(p.network.kind).toBe("local-anvil");
+    expect(p.profit.realized).toBe(trades[0].quotedProfit);
+    expect(BigInt(p.balances.claimAfter) - BigInt(p.balances.claimBefore)).toBe(BigInt(p.profit.realized));
+    expect(p.trace.available).toBe(true);
+    const calls = p.trace.steps.map((s: { to: string; call: string }) => `${s.to}.${s.call}`);
+    for (const c of ["Uniswap v4 PoolManager.unlock", "FlashArbExecutor.unlockCallback", "Uniswap v4 PoolManager.swap", "Uniswap v4 PoolManager.sync",
+      "1inch SwapVM router.swap", "1inch Aqua.pull", "FlashArbExecutor.preTransferInCallback", "Uniswap v4 PoolManager.take", "1inch Aqua.push",
+      "Uniswap v4 PoolManager.settle", "Uniswap v4 PoolManager.mint"]) expect(calls).toContain(c);
+    expect(p.events.map((e: { name: string }) => e.name)).toEqual(expect.arrayContaining(["Swap", "Pulled", "Pushed", "Transfer (ERC-6909 claim)"]));
+  }, 60_000);
 
   it("trades again after a reseed", async () => {
     sh("reseed.sh");
