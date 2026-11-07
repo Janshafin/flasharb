@@ -251,3 +251,15 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--
   .proof td { border: 0; padding: 2px 0; overflow-wrap: anywhere; }
   .proof td:last-child { color: var(--muted); font-size: 14px; }
 }
+
+/* Steps before a trade */
+.steps { list-style: none; padding: 0; border: 3px solid var(--ink); max-width: 860px; }
+.steps li { display: flex; gap: 14px; padding: 14px 18px; align-items: flex-start; }
+.steps li + li { border-top: 1px solid #cfcfcf; }
+.steps li[data-state="now"] { background: var(--yellow); }
+.steps li[data-state="later"] { color: var(--muted); }
+.steps .stn { flex: none; width: 32px; height: 32px; display: grid; place-items: center; font-weight: 800; border: 2px solid currentColor; border-radius: 50%; }
+.steps li[data-state="done"] .stn { background: var(--ink); color: var(--white); border-color: var(--ink); }
+.steps p { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.steps code { font-weight: 600; overflow-wrap: anywhere; }
+.steps .cmd { display: block; width: 100%; background: var(--white); padding: 10px 12px; border: 2px solid var(--ink); }

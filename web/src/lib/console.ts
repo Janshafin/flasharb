@@ -45,9 +45,16 @@ export function explain(e: unknown): string {
       if (n) return `${n}${a?.length ? ` (${a.map(String).join(", ")})` : ""}. ${FIX[n] ?? ""}`.trim();
       return `The contract reverted: ${r.reason ?? r.shortMessage}`;
     }
-    return e.shortMessage;
+    return withHint(e.shortMessage, e.message);
   }
-  return e instanceof Error ? e.message : String(e);
+  return withHint(e instanceof Error ? e.message : String(e), String(e));
+}
+
+/** MetaMask remembers an account's nonce per network, so after the local chain restarts it sends a stale one. */
+function withHint(msg: string, detail: string): string {
+  return /nonce/i.test(detail)
+    ? `${msg} The local chain was restarted, so MetaMask's remembered nonce is out of date. In MetaMask open Settings, Advanced, "Clear activity tab data", then send again.`
+    : msg;
 }
 
 /** Builds the executor's Arb argument from the form, expiring `blocks` after `latest`. Throws a readable error. */

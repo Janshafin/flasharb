@@ -73,7 +73,7 @@ WALLET=0xYourTestAccount scripts/demo.sh
 
 [`scripts/demo-wallet.sh`](scripts/demo-wallet.sh) runs on the local chain only. It deploys a second, unchanged `FlashArbExecutor` whose `OWNER` is that address, gives the address 100 local test ETH, approves Aqua for the executor and points `deployments/31337.json` at it. The bot then runs in dry-run mode: it quotes for your executor but never sends, so it cannot take the trade before you do. No key of yours is used or stored.
 
-1. Open <http://127.0.0.1:5173/#/app>, connect MetaMask and pick **Local demo** in the network menu (it offers to add chain 31337 with RPC `http://127.0.0.1:8545`).
+1. Open <http://127.0.0.1:5173/#/app/execute> (**Run a trade**). Until you can trade, it shows a checklist with a button for each step: **Connect wallet**, then **Switch network** (MetaMask asks to add Local demo, chain 31337, RPC `http://127.0.0.1:8545`; approve it). If the demo was started without `WALLET=`, the executor belongs to anvil's account and the checklist shows the exact command to restart with your address.
 2. On the Overview page, load the ready opportunity into the console. The console shows the pair, direction, the bot's gross profit, gas and net profit, and the minimum profit.
 3. **Simulate**, then **Send** and confirm in MetaMask. The log shows the hash, block, gas and the profit read back from chain.
 4. The profit is an ERC-6909 claim held by the executor inside the PoolManager, not a token in your wallet. **Withdraw** under Claims turns it into WETH in your wallet.

@@ -4,6 +4,7 @@ import { buildArb, explain, validate, FORM_KEY, loadForm, readPrefill, type Form
 import { erc20Abi, executorAbi, poolManagerAbi } from "../lib/abi";
 import { addMyTrade } from "../lib/mytrades";
 import { Claims, LogList, Progress } from "./ConsoleSide";
+import Steps from "./Steps";
 import Maintenance, { type MaintForm, type MaintKind } from "./Maintenance";
 import { usePoll, type Claim, type Status } from "../lib/api";
 import { fmtUnits } from "../lib/format";
@@ -23,9 +24,14 @@ export default function Execute() {
   useEffect(() => { try { localStorage.removeItem("flasharb.prefill"); } catch { /* ignore */ } }, []);
   const status = usePoll<Status>("/api/status", 5000);
   const claimsPoll = usePoll<{ claims: Claim[] }>("/api/claims", 5000);
+  // Follow the bot's executor: after a restart (for example with WALLET=...) the remembered form would otherwise keep
+  // the previous chain's executor, owned by someone else. A deliberately typed address is replaced only on a change.
   useEffect(() => {
     const ex = status.data?.executor;
-    if (ex) setF((x) => (x.executor ? x : { ...x, executor: ex }));
+    if (!ex) return;
+    let last: string | null = null;
+    try { last = localStorage.getItem("flasharb.botExecutor"); localStorage.setItem("flasharb.botExecutor", ex); } catch { /* ignore */ }
+    setF((x) => (!x.executor || (last !== ex && x.executor !== ex) ? { ...x, executor: ex } : x));
   }, [status.data?.executor]);
   const [logs, setLogs] = useState<Log[]>([]);
   const [phase, setPhase] = useState(-1); // -1 idle, 0..3 running, 4 done
@@ -145,13 +151,8 @@ export default function Execute() {
         <p>Simulate against live state first. Send unlocks only for the exact inputs that passed.</p>
       </header>
 
-      {!w.hasProvider && <p className="callout">No browser wallet found. Install one, then reload this page.</p>}
-      {w.hasProvider && !connected && <p className="callout">Connect a wallet to simulate and send.</p>}
+      <Steps botChainId={status.data?.chainId} owner={owner} ownerOk={ownerOk} executor={f.executor} loaded={!!quote || !!sim} />
       {note && <p className="callout" role="status">{note} Check the amounts, then simulate.</p>}
-      {connected && !wrongChain && status.data && w.chainId !== status.data.chainId && (
-        <p className="callout bad">The bot is working on chain {status.data.chainId}, but your wallet is on {w.chain?.name ?? w.chainId}. Switch networks in the top bar, or the executor address will not exist there.</p>
-      )}
-      {wrongChain && <p className="callout bad">This wallet is on a network flasharb does not support (chain {w.chainId}). Pick one in the top bar; for the local demo, pick Local demo (31337).</p>}
       {connected && !blocked && isAddress(f.executor) && isAddress(f.c0) && isAddress(f.c1) && (
         <section className="callout" aria-label="Trade summary">
           <p><b>{pairSym(f.c0)}/{pairSym(f.c1)}</b> on the Uniswap v4 PoolManager {short(status.data?.poolManager)}, fee {f.fee}, tick spacing {f.tickSpacing}. Sell {f.amountIn} {pairSym(f.zeroForOne ? f.c0 : f.c1)} on v4, buy it back from the Aqua strategy through SwapVM, settle both in one unlock.</p>
