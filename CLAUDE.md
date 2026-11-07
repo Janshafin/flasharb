@@ -8,6 +8,9 @@ flasharb is a flash-arbitrage executor: Uniswap v4 flash accounting on one side,
 - Build and test: `forge build`, `forge test -vv`
 - Canonical Unichain contracts: `UNICHAIN_RPC_URL=... forge test --match-path 'test/fork/*' -vv`
 - Gas: `forge test` rewrites `snapshots/FlashArbExecutor.json`; compare before and after each optimization.
+- Demo: `scripts/demo.sh` starts a local chain with the full stack, the bot and the dashboard (`BOT_MODE=dry` keeps the bot from sending; `scripts/reseed.sh` opens a new gap). `deployments/31337.json` is regenerated each run.
+- Bot: `cd bot && npm ci && npm test`; with anvil and forge installed, `DEMO_E2E=1 npx vitest run test/e2e.test.ts` runs it against a real local chain.
+- Dashboard: `cd web && npm ci && npm run build`; `npm run dev` serves it on 5173.
 - Sandboxes that cannot reach binaries.soliditylang.org: put solc 0.8.26 and 0.8.30 in `~/.svm/<version>/solc-<version>` and set `FOUNDRY_OFFLINE=true`.
 
 ## Rules
@@ -19,6 +22,7 @@ flasharb is a flash-arbitrage executor: Uniswap v4 flash accounting on one side,
 - The Huff executor must behave exactly like `src/FlashArbExecutor.sol`; differential tests compare the two.
 - Keep a gas optimization only if the snapshot moves.
 - Never read the environment or call `vm.setEnv` in Foundry tests: forge runs tests in parallel and env vars are process-wide. Give scripts a `deploy(...)` function that takes parameters.
+- Always pass `cacheTime: 0` when reading the block number with viem; the default cache hides new blocks for 4 seconds.
 - Commit at every gate in the plan's timeline; 1inch reviews the commit history.
 - Keep Aqua and SwapVM as dependencies under their own licenses; never paste their source into this repo.
 
